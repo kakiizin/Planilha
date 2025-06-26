@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planilha</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for Inter font and general body */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        /* Style for the container to center content */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 0.75rem; /* Rounded corners */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        /* Table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb; /* Light border */
+        }
+        th {
+            background-color: #f9fafb; /* Slightly darker header background */
+            font-weight: 600;
+            color: #1f2937;
+        }
+        tr:hover {
+            background-color: #f2f7ff; /* Light blue on hover */
+        }
+        /* Button styling */
+        button {
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        button:hover {
+            transform: translateY(-1px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        /* Message box styling */
+        .message-box {
+            background-color: #d1fae5; /* Light green for success */
+            color: #065f46;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: none; /* Hidden by default */
+        }
+        .message-box.error {
+            background-color: #fee2e2; /* Light red for error */
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-8">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Controle de Compra de Curso</h1>
+
+        <!-- User ID Display -->
+        <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-6" role="alert">
+            <strong class="font-bold">Seu ID de Usuário:</strong>
+            <span id="userIdDisplay" class="block sm:inline break-all">Carregando...</span>
+        </div>
+
+        <!-- Message Box for feedback -->
+        <div id="messageBox" class="message-box"></div>
+
+        <!-- Form to add new student -->
+        <div class="bg-gray-50 p-6 rounded-xl shadow-inner mb-6">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Adicionar Novo Aluno</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="studentName" class="block text-gray-700 text-sm font-bold mb-2">Nome do Aluno:</label>
+                    <input type="text" id="studentName" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" placeholder="Nome Completo">
+                </div>
+                <div class="flex items-center mt-6 md:mt-0">
+                    <input type="checkbox" id="hasPurchased" class="mr-2 h-5 w-5 text-blue-600 rounded focus:ring-blue-500">
+                    <label for="hasPurchased" class="text-gray-700 text-base font-bold">Comprou o Curso?</label>
+                </div>
+            </div>
+            <button id="addStudentBtn" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full md:w-auto">Adicionar Aluno</button>
+        </div>
+
+        <!-- Filter and Search -->
+        <div class="flex flex-col md:flex-row gap-4 mb-6">
+            <div class="flex-grow">
+                <label for="filterStatus" class="block text-gray-700 text-sm font-bold mb-2">Filtrar por Status:</label>
+                <select id="filterStatus" class="shadow border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500">
+                    <option value="all">Todos</option>
+                    <option value="purchased">Comprou</option>
+                    <option value="not-purchased">Não Comprou</option>
+                </select>
+            </div>
+            <div class="flex-grow">
+                <label for="searchName" class="block text-gray-700 text-sm font-bold mb-2">Buscar por Nome:</label>
+                <input type="text" id="searchName" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" placeholder="Buscar por nome do aluno...">
+            </div>
+        </div>
+
+        <!-- Student List Table -->
+        <div class="bg-gray-50 p-6 rounded-xl shadow-inner">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Lista de Alunos</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="py-3 px-6 text-xs tracking-wider text-gray-600 uppercase">Nome do Aluno</th>
+                            <th class="py-3 px-6 text-xs tracking-wider text-gray-600 uppercase">Status</th>
+                            <th class="py-3 px-6 text-xs tracking-wider text-gray-600 uppercase">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentListBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Student rows will be injected here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            <p id="noStudentsMessage" class="text-center text-gray-500 mt-4 hidden">Nenhum aluno encontrado.</p>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Global variables for Firebase and app data
+        let app;
+        let db;
+        let auth;
+        let userId = 'anonymous'; // Default to anonymous
+        let studentsCollectionRef;
+
+        // Message box elements
+        const messageBox = document.getElementById('messageBox');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+
+        // Firestore configuration and initialization
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Initialize Firebase
+        if (Object.keys(firebaseConfig).length > 0) {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            // Authenticate and set up Firestore listener
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    userIdDisplay.textContent = userId;
+                    // Define the collection reference based on the authenticated user and app ID
+                    studentsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/students`);
+                    setupRealtimeListener(); // Start listening for data changes
+                } else {
+                    // Sign in anonymously if no user is found
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Erro ao autenticar no Firebase:", error);
+                        showMessage("Erro ao conectar ao serviço de dados. Tente recarregar a página.", 'error');
+                        userIdDisplay.textContent = 'Erro de Autenticação';
+                    }
+                }
+            });
+        } else {
+            console.error("Firebase config is not defined. Data persistence will not work.");
+            showMessage("Configuração do Firebase não encontrada. O salvamento de dados não funcionará.", 'error');
+            userIdDisplay.textContent = 'Firebase não configurado';
+        }
+
+        // DOM Elements
+        const studentNameInput = document.getElementById('studentName');
+        const hasPurchasedCheckbox = document.getElementById('hasPurchased');
+        const addStudentBtn = document.getElementById('addStudentBtn');
+        const studentListBody = document.getElementById('studentListBody');
+        const noStudentsMessage = document.getElementById('noStudentsMessage');
+        const filterStatusSelect = document.getElementById('filterStatus');
+        const searchNameInput = document.getElementById('searchName');
+
+        let studentsData = []; // Array to hold all students fetched from Firestore
+
+        // Function to display messages to the user
+        function showMessage(message, type = 'success') {
+            messageBox.textContent = message;
+            messageBox.className = `message-box ${type}`;
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 3000);
+        }
+
+        // Function to render the students list based on filters and search
+        function renderStudents() {
+            studentListBody.innerHTML = ''; // Clear existing list
+            const filterValue = filterStatusSelect.value;
+            const searchValue = searchNameInput.value.toLowerCase();
+            let filteredStudents = studentsData;
+
+            // Apply filter by status
+            if (filterValue === 'purchased') {
+                filteredStudents = filteredStudents.filter(student => student.hasPurchased);
+            } else if (filterValue === 'not-purchased') {
+                filteredStudents = filteredStudents.filter(student => !student.hasPurchased);
+            }
+
+            // Apply search by name
+            if (searchValue) {
+                filteredStudents = filteredStudents.filter(student =>
+                    student.name.toLowerCase().includes(searchValue)
+                );
+            }
+
+            if (filteredStudents.length === 0) {
+                noStudentsMessage.style.display = 'block';
+            } else {
+                noStudentsMessage.style.display = 'none';
+                filteredStudents.forEach(student => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50'; // Add hover effect to rows
+                    row.innerHTML = `
+                        <td class="py-3 px-6 text-sm text-gray-800">${student.name}</td>
+                        <td class="py-3 px-6 text-sm text-gray-800">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${student.hasPurchased ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${student.hasPurchased ? 'Comprou' : 'Não Comprou'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-6 text-sm">
+                            <button data-id="${student.id}" data-purchased="${student.hasPurchased}" class="toggle-status-btn bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-full text-xs mr-2">
+                                ${student.hasPurchased ? 'Marcar Não Comprou' : 'Marcar Comprou'}
+                            </button>
+                            <button data-id="${student.id}" class="delete-btn bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-full text-xs">
+                                Excluir
+                            </button>
+                        </td>
+                    `;
+                    studentListBody.appendChild(row);
+                });
+
+                // Add event listeners for new buttons
+                document.querySelectorAll('.toggle-status-btn').forEach(button => {
+                    button.addEventListener('click', togglePurchaseStatus);
+                });
+                document.querySelectorAll('.delete-btn').forEach(button => {
+                    button.addEventListener('click', deleteStudent);
+                });
+            }
+        }
+
+        // Add new student to Firestore
+        addStudentBtn.addEventListener('click', async () => {
+            const studentName = studentNameInput.value.trim();
+            const hasPurchased = hasPurchasedCheckbox.checked;
+
+            if (!studentName) {
+                showMessage("Por favor, insira o nome do aluno.", 'error');
+                return;
+            }
+            if (!studentsCollectionRef) {
+                showMessage("Erro: Coleção de alunos não inicializada. Tente recarregar a página.", 'error');
+                return;
+            }
+
+            try {
+                await addDoc(studentsCollectionRef, {
+                    name: studentName,
+                    hasPurchased: hasPurchased,
+                    createdAt: new Date() // Add timestamp for potential sorting
+                });
+                studentNameInput.value = '';
+                hasPurchasedCheckbox.checked = false;
+                showMessage("Aluno adicionado com sucesso!");
+            } catch (e) {
+                console.error("Erro ao adicionar documento: ", e);
+                showMessage("Erro ao adicionar aluno. Verifique o console.", 'error');
+            }
+        });
+
+        // Toggle purchase status of a student
+        async function togglePurchaseStatus(event) {
+            const studentId = event.target.dataset.id;
+            const currentStatus = event.target.dataset.purchased === 'true';
+            if (!studentsCollectionRef || !studentId) return;
+
+            try {
+                const studentDocRef = doc(db, `artifacts/${appId}/users/${userId}/students`, studentId);
+                await updateDoc(studentDocRef, {
+                    hasPurchased: !currentStatus
+                });
+                showMessage("Status do aluno atualizado!");
+            } catch (e) {
+                console.error("Erro ao atualizar status: ", e);
+                showMessage("Erro ao atualizar status do aluno.", 'error');
+            }
+        }
+
+        // Delete a student
+        async function deleteStudent(event) {
+            const studentId = event.target.dataset.id;
+            if (!studentsCollectionRef || !studentId) return;
+
+            try {
+                const studentDocRef = doc(db, `artifacts/${appId}/users/${userId}/students`, studentId);
+                await deleteDoc(studentDocRef);
+                showMessage("Aluno excluído com sucesso!");
+            } catch (e) {
+                console.error("Erro ao excluir aluno: ", e);
+                showMessage("Erro ao excluir aluno.", 'error');
+            }
+        }
+
+        // Setup real-time listener for Firestore
+        function setupRealtimeListener() {
+            // Create a query to order students by creation date (optional but good practice)
+            const q = query(studentsCollectionRef); // No orderBy here to prevent index issues
+
+            onSnapshot(q, (snapshot) => {
+                const updatedStudents = [];
+                snapshot.forEach((doc) => {
+                    updatedStudents.push({ id: doc.id, ...doc.data() });
+                });
+                // Sort students by creation date after fetching (client-side sorting)
+                studentsData = updatedStudents.sort((a, b) => (a.createdAt?.toDate() || 0) - (b.createdAt?.toDate() || 0));
+                renderStudents(); // Re-render the list every time data changes
+            }, (error) => {
+                console.error("Erro ao carregar dados em tempo real: ", error);
+                showMessage("Erro ao carregar dados. Verifique sua conexão.", 'error');
+            });
+        }
+
+        // Event listeners for filter and search
+        filterStatusSelect.addEventListener('change', renderStudents);
+        searchNameInput.addEventListener('input', renderStudents);
+
+        // Initial render (will be updated by the listener once data loads)
+        renderStudents();
+    </script>
+</body>
+</html>
